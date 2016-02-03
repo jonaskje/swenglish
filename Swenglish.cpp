@@ -26,7 +26,8 @@ LRESULT CALLBACK LowLevelKeyboardProc(
 	//sprintf_s(buf, 256, "w:%08u, vk:%08u, scan:%08u, f:%08u\n", wParam, p->vkCode, p->scanCode, p->flags);
 	//OutputDebugStringA(buf);
 
-	if (p->vkCode == 93) {
+	// Use the windows button to enable swedish chars
+	if (p->vkCode == 91 && !(p->flags & LLKHF_INJECTED)) {
 		g_enableSwedishChars = keyDown;
 		return 1;
 	}
@@ -64,15 +65,31 @@ LRESULT CALLBACK LowLevelKeyboardProc(
 			INPUT newinput = { 0 };
 			newinput.type = INPUT_KEYBOARD;
 
-			newinput.ki.wVk = 0; //(WORD)vk;
-			newinput.ki.wScan = scan; //(WORD)p->scanCode;
-			newinput.ki.dwFlags = KEYEVENTF_UNICODE | (keyUp ? KEYEVENTF_KEYUP : 0); //p->flags;
-			newinput.ki.time = 0; //p->time;
-			newinput.ki.dwExtraInfo = 0; //p->dwExtraInfo;
+			newinput.ki.wVk = 0;
+			newinput.ki.wScan = scan;
+			newinput.ki.dwFlags = KEYEVENTF_UNICODE | (keyUp ? KEYEVENTF_KEYUP : 0);
+			newinput.ki.time = 0;
+			newinput.ki.dwExtraInfo = 0;
 
 			SendInput(1, &newinput, sizeof(INPUT));
 			return 1;
 		}
+	}
+
+	// Replace context menu button with the windows button
+	if (p->vkCode == 93)
+	{
+		INPUT newinput = { 0 };
+		newinput.type = INPUT_KEYBOARD;
+
+		newinput.ki.wVk = 91;
+		newinput.ki.wScan = 91;
+		newinput.ki.dwFlags = KEYEVENTF_EXTENDEDKEY | (keyUp ? KEYEVENTF_KEYUP : 0);
+		newinput.ki.time = 0;
+		newinput.ki.dwExtraInfo = 0;
+
+		SendInput(1, &newinput, sizeof(INPUT));
+		return 1;
 	}
 
 	return CallNextHookEx(0, nCode, wParam, lParam);
@@ -85,11 +102,14 @@ int CALLBACK WinMain(
 	_In_ int       nCmdShow
 	)
 {
-	HHOOK hook = SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc, hInstance, 0);
-	(void)hook;
-
-	MSG msg; 
-	while (GetMessage(&msg, 0, 0, 0));
-
-	return 0;
+	if (SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc, hInstance, 0))
+	{
+		MSG msg;
+		while (GetMessage(&msg, 0, 0, 0));
+		return 0;
+	}
+	else
+	{
+		return 1;
+	}
 }
