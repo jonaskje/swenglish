@@ -1,6 +1,8 @@
 #include <windows.h>
-#include <stdio.h>
 
+#pragma comment(linker, "/ALIGN:16")
+#pragma comment(linker, "/MERGE:.rdata=.data")
+#pragma comment(linker, "/MERGE:.text=.data")
 
 bool g_enableSwedishChars = false;
 bool g_lshift = false;
@@ -21,10 +23,6 @@ LRESULT CALLBACK LowLevelKeyboardProc(
 	bool keyUp = wParam == WM_KEYUP;
 
 	KBDLLHOOKSTRUCT* p = (KBDLLHOOKSTRUCT*)lParam;
-
-	//char buf[256];
-	//sprintf_s(buf, 256, "w:%08u, vk:%08u, scan:%08u, f:%08u\n", wParam, p->vkCode, p->scanCode, p->flags);
-	//OutputDebugStringA(buf);
 
 	// Use the windows button to enable swedish chars
 	if (p->vkCode == 91 && !(p->flags & LLKHF_INJECTED)) {
@@ -62,7 +60,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(
 
 		if (scan != 0)
 		{
-			INPUT newinput = { 0 };
+			INPUT newinput;
 			newinput.type = INPUT_KEYBOARD;
 
 			newinput.ki.wVk = 0;
@@ -79,7 +77,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(
 	// Replace context menu button with the windows button
 	if (p->vkCode == 93)
 	{
-		INPUT newinput = { 0 };
+		INPUT newinput;
 		newinput.type = INPUT_KEYBOARD;
 
 		newinput.ki.wVk = 91;
@@ -95,14 +93,13 @@ LRESULT CALLBACK LowLevelKeyboardProc(
 	return CallNextHookEx(0, nCode, wParam, lParam);
 }
 
-int CALLBACK WinMain(
-	_In_ HINSTANCE hInstance,
-	_In_ HINSTANCE hPrevInstance,
-	_In_ LPSTR     lpCmdLine,
-	_In_ int       nCmdShow
-	)
+int __stdcall SwenglishMain()
 {
-	if (SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc, hInstance, 0))
+	g_enableSwedishChars = false;
+	g_lshift = false;
+	g_rshift = false;
+
+	if (SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc, 0, 0))
 	{
 		MSG msg;
 		while (GetMessage(&msg, 0, 0, 0));
